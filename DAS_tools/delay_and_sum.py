@@ -68,6 +68,7 @@ def speaker(x, y, z=0):
     """Speaker"""
     return [x, y, z]
 
+
 def DAS_calculator_3d_steer(mic_array, frequencies, angles, speed_of_sound=343.3):
     # omskrevet fra c til python - http://www.labbookpages.co.uk/audio/beamforming/delaySum.html
     num_mics = len(mic_array)
@@ -94,6 +95,7 @@ def DAS_calculator_3d_steer(mic_array, frequencies, angles, speed_of_sound=343.3
 
     return output
 
+
 def DAS_calculator(mic_array, freq, angle_res=500, speed_of_sound=343.3):
     # omskrevet fra c til python - http://www.labbookpages.co.uk/audio/beamforming/delaySum.html
     num_mics = len(mic_array)
@@ -113,7 +115,7 @@ def DAS_calculator(mic_array, freq, angle_res=500, speed_of_sound=343.3):
             realSum[idx] += np.cos(2 * np.pi * freq * delay)
             imagSum[idx] += np.sin(2 * np.pi * freq * delay)
 
-        output[idx] = np.sqrt(realSum[idx] ** 2 + imagSum[idx] ** 2) / num_mics
+        output[idx] = np.sqrt(realSum[idx] ** 2 + imagSum[idx] ** 2) / np.sqrt(num_mics)
 
     return output
 
@@ -197,24 +199,24 @@ def delay_between_microphones(source, mic_array, fs=48e3):
     weight = np.linspace(0.8, 1, n)
     mic_array_x = mic_array.copy()
     # replace the [idx][0] with the correct value
+    angle = angles[0]
     for idx, mic in enumerate(mic_array):
         mic_array_x[idx][0] = temp[idx]
-
     if side == "left":
         mic_array_x = mic_array_x[::-1]
         weight = weight[::-1]
-    if side == "right":
-        angles = -angles
+    # if side == "right":
+    # angles = -angles
     shift_samples = np.zeros((len(mic_array_x)))
     ts = 1 / fs
-    for idx, (mic, angle) in enumerate(zip(mic_array_x, angles)):
-        shift_samples[idx] = ((((mic[0]) * np.cos(np.radians(angle)))) / 343.3) / ts
+    for idx, (mic) in enumerate(mic_array_x):
+        shift_samples[idx] = ((((mic[0]) * np.cos(angle))) / 343.3) / ts
         print(
             f"Mic:\t\t{mic}\n"
             f"angle: {angle}\n"
             f"extra distance:{((mic[0])*np.cos(np.deg2rad(angle)))}m\n"
-            f"extra time:{((((mic[0])*np.cos(np.deg2rad(angle))))/343.3)*1e3}ms\n"
-            f"sample_diff:\t{((((mic[0])*np.cos(np.deg2rad(angle))))/343.3)/ts}samples\n"
+            # f"extra time:{((((mic[0])*np.cos(np.deg2rad(angle))))/343.3)*1e3}ms\n"
+            # f"sample_diff:\t{((((mic[0])*np.cos(np.deg2rad(angle))))/343.3)/ts}samples\n"
         )
     return shift_samples, weight
 
@@ -225,8 +227,8 @@ def FIR_calculate(source, mic_array, fs=48e3, FIR_taps=25):
     int_delay = np.floor(shift_samples)
     fract_delay = shift_samples % 1
     center_tap = FIR_taps // 2
-    # print(f"Int delay: {int_delay}")
-    # print(f"Fract delay: {fract_delay}")
+    print(f"Int delay: {int_delay}")
+    print(f"Fract delay: {fract_delay}")
     coeffs = np.zeros((len(int_delay), (FIR_taps)))
     for i, delay in enumerate(fract_delay):
         if delay == 0:
@@ -308,7 +310,7 @@ def source_viewer(src, fs, title="", filename=""):
     # window
     window = np.blackman(N)
     freq = rfftfreq(N, 1 / fs)
-    src_mag = np.abs(src_fft) / N
+    src_mag = np.abs(src_fft) /  N
 
     fig = plt.figure(figsize=(14, 10), facecolor="w")
     gs = fig.add_gridspec(2, 2)
@@ -321,8 +323,8 @@ def source_viewer(src, fs, title="", filename=""):
     ax1.grid()
     ax2.specgram(src, NFFT=4096, Fs=fs, noverlap=2048, scale="dB")
     ax2.set_yscale("log")
-    ax2.set_ylim(100, 4e3)
-    ax2.set_xlim(0,2)
+    ax2.set_ylim(200, 20e3)
+    # ax2.set_xlim(0, 2)
     ax2.set_xlabel("Tid [s]")
     ax2.yaxis.set_major_formatter(formatEng)
     ax3.semilogx(freq, src_mag)
@@ -351,10 +353,10 @@ def shift_viewer(
 ):
     shifted_spk, shift_samples = sound_shift(mic_inputs, mic_array, speaker_location)
     fig, ax = plt.subplots(
-        1, 2, figsize=(12, 12), sharex=True, sharey=True, facecolor="w"
+        1, 2, figsize=(14, 8), sharex=True, sharey=True, facecolor="w"
     )
     N = len(mic_inputs[0])
-    plt_space = np.max(np.abs(mic_inputs))*1.5
+    plt_space = np.max(np.abs(mic_inputs)) * 1.5
     num_mics = len(mic_array)
     t = np.linspace(0, N / fs, N)
     ticks = np.arange(0, plt_space * num_mics, plt_space)
